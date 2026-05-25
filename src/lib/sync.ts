@@ -60,7 +60,12 @@ export async function runJiraSync(jql?: string) {
       })
       .where(eq(schema.syncRuns.id, run.id));
 
-    return { ok: true as const, count: issues.length, runId: run.id };
+    return {
+      ok: true as const,
+      count: issues.length,
+      runId: run.id,
+      jql: query,
+    };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await db

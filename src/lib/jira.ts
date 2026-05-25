@@ -1,6 +1,6 @@
-/** Усі відкриті задачі проєкту MK (без assignee = currentUser — на сервері це не працює). */
+/** JQL для дошки MK (~230 відкритих задач). */
 export const DEFAULT_JQL =
-  "project = MK AND statusCategory != Done ORDER BY duedate ASC, updated DESC";
+  "project = MK AND statusCategory != Done ORDER BY duedate ASC";
 
 const SEARCH_FIELDS = [
   "summary",
@@ -20,6 +20,13 @@ export type JiraIssueDto = {
   dueDate: string | null;
   jiraUpdated: string | null;
   url: string;
+};
+
+type JiraSearchResponse = {
+  issues?: Array<{ id?: string; key?: string; fields?: Record<string, unknown> }>;
+  isLast?: boolean;
+  nextPageToken?: string;
+  total?: number;
 };
 
 /** Лише origin, якщо в env випадково вставили URL дошки /jira/software/... */
@@ -59,107 +66,186 @@ export function getJiraConfig() {
   };
 }
 
+function authHeader(email: string, apiToken: string) {
+  return `Basic ${Buffer.from(`${email}:${apiToken}`).toString("base64")}`;
+}
+
+async function searchPage(
+  baseUrl: string,
+  auth: string,
+  query: string,
+  maxResults: number,
+  nextPageToken?: string,
+  useFields = true
+): Promise<JiraSearchResponse> {
+  const body: Record<string, unknown> = {
+    jql: query,
+    maxResults,
+    fieldsByKeys: false,
+  };
+  if (useFields) body.fields = SEARCH_FIELDS;
+  if (nextPageToken) body.nextPageToken = nextPageToken;
+
+  const res = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      Authorization: auth,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Jira API ${res.status}: ${text.slice(0, 500)}`);
+  }
+
+  return (await res.json()) as JiraSearchResponse;
+}
+
+/** GET fallback — інколи POST з fields повертає 0 при валідному JQL. */
+async function searchPageGet(
+  baseUrl: string,
+  auth: string,
+  query: string,
+  maxResults: number,
+  nextPageToken?: string
+): Promise<JiraSearchResponse> {
+  const url = new URL(`${baseUrl}/rest/api/3/search/jql`);
+  url.searchParams.set("jql", query);
+  url.searchParams.set("maxResults", String(maxResults));
+  for (const f of SEARCH_FIELDS) url.searchParams.append("fields", f);
+  if (nextPageToken) url.searchParams.set("nextPageToken", nextPageToken);
+
+  const res = await fetch(url.toString(), {
+    headers: { Accept: "application/json", Authorization: auth },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Jira API GET ${res.status}: ${text.slice(0, 500)}`);
+  }
+
+  return (await res.json()) as JiraSearchResponse;
+}
+
+async function fetchAllPages(
+  baseUrl: string,
+  auth: string,
+  query: string,
+  maxResults: number,
+  searchFn: typeof searchPage
+): Promise<JiraIssueDto[]> {
+  const issues: JiraIssueDto[] = [];
+  let nextPageToken: string | undefined;
+  let pages = 0;
+
+  while (issues.length < maxResults && pages < 20) {
+    pages++;
+    const pageSize = Math.min(100, maxResults - issues.length);
+    const data = await searchFn(
+      baseUrl,
+      auth,
+      query,
+      pageSize,
+      nextPageToken
+    );
+
+    const batch = data.issues ?? [];
+    for (const raw of batch) {
+      const parsed = parseIssue(raw, baseUrl);
+      if (parsed.key) issues.push(parsed);
+    }
+
+    if (data.isLast === true) break;
+    nextPageToken = data.nextPageToken;
+    if (!nextPageToken) break;
+    if (batch.length === 0) break;
+  }
+
+  return issues;
+}
+
 export async function fetchJiraIssues(
   jql?: string,
   maxResults = 500
 ): Promise<JiraIssueDto[]> {
   const { baseUrl, email, apiToken, jql: defaultJql } = getJiraConfig();
   const query = jql?.trim() || defaultJql;
-  const auth = Buffer.from(`${email}:${apiToken}`).toString("base64");
+  const auth = authHeader(email, apiToken);
 
-  const issues: JiraIssueDto[] = [];
-  let nextPageToken: string | undefined;
+  let issues = await fetchAllPages(
+    baseUrl,
+    auth,
+    query,
+    maxResults,
+    searchPage
+  );
 
-  while (issues.length < maxResults) {
-    const payload: Record<string, unknown> = {
-      jql: query,
-      maxResults: Math.min(100, maxResults - issues.length),
-      fields: SEARCH_FIELDS,
-    };
-    if (nextPageToken) payload.nextPageToken = nextPageToken;
+  if (issues.length === 0) {
+    issues = await fetchAllPages(
+      baseUrl,
+      auth,
+      query,
+      maxResults,
+      (b, a, q, m, t) => searchPage(b, a, q, m, t, false)
+    );
+  }
 
-    const res = await fetch(`${baseUrl}/rest/api/3/search/jql`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        Authorization: `Basic ${auth}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Jira API ${res.status}: ${body.slice(0, 500)}`);
-    }
-
-    const data = (await res.json()) as {
-      issues?: Array<{ key: string; fields: Record<string, unknown> }>;
-      isLast?: boolean;
-      nextPageToken?: string;
-    };
-
-    for (const raw of data.issues ?? []) {
-      issues.push(parseIssue(raw, baseUrl));
-    }
-
-    const batch = data.issues ?? [];
-    if (data.isLast === true || batch.length === 0) break;
-    nextPageToken = data.nextPageToken;
-    if (!nextPageToken) break;
+  if (issues.length === 0) {
+    issues = await fetchAllPages(
+      baseUrl,
+      auth,
+      query,
+      maxResults,
+      searchPageGet
+    );
   }
 
   return issues;
 }
 
-/** Діагностика: скільки задач повертає Jira для різних JQL (без запису в БД). */
 export async function probeJiraSearch(): Promise<{
   baseUrl: string;
   activeJql: string;
   count: number;
   sampleKeys: string[];
-  probes: Array<{ jql: string; count: number }>;
 }> {
   const { baseUrl, jql: activeJql } = getJiraConfig();
   const issues = await fetchJiraIssues(activeJql, 50);
-  const probes: Array<{ jql: string; count: number }> = [];
-  for (const q of [
-    activeJql,
-    DEFAULT_JQL,
-    "project = MK ORDER BY updated DESC",
-    "project = MK AND resolution IS EMPTY ORDER BY updated DESC",
-  ]) {
-    if (probes.some((p) => p.jql === q)) continue;
-    const list = await fetchJiraIssues(q, 10);
-    probes.push({ jql: q, count: list.length });
-  }
   return {
     baseUrl,
     activeJql,
     count: issues.length,
-    sampleKeys: issues.slice(0, 5).map((i) => i.key),
-    probes,
+    sampleKeys: issues.slice(0, 10).map((i) => i.key),
   };
 }
 
 function parseIssue(
-  raw: { key: string; fields: Record<string, unknown> },
+  raw: { id?: string; key?: string; fields?: Record<string, unknown> },
   baseUrl: string
 ): JiraIssueDto {
-  const fields = raw.fields;
+  const fields = raw.fields ?? {};
   const status = fields.status as { name?: string } | undefined;
   const assignee = fields.assignee as { displayName?: string } | undefined;
   const priority = fields.priority as { name?: string } | undefined;
   const dueRaw = fields.duedate as string | undefined;
 
+  let key = raw.key ?? "";
+  if (!key && raw.id) {
+    const m = String(raw.id).match(/^(MK-\d+)$/i);
+    if (m) key = m[1].toUpperCase();
+  }
+
   return {
-    key: raw.key,
+    key,
     summary: (fields.summary as string) || "",
     status: status?.name || "—",
     assignee: assignee?.displayName ?? null,
     priority: priority?.name ?? null,
     dueDate: dueRaw ?? null,
     jiraUpdated: (fields.updated as string) ?? null,
-    url: `${baseUrl}/browse/${raw.key}`,
+    url: key ? `${baseUrl}/browse/${key}` : baseUrl,
   };
 }
