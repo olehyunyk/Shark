@@ -2,21 +2,15 @@
 
 import { useState } from "react";
 
-export function SyncButton() {
+export function SyncButton({ boardId = "mk" }: { boardId?: string }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   async function handleSync() {
-    const secret = prompt("CRON_SECRET для синхронізації:");
-    if (!secret) return;
-
     setLoading(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/sync", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${secret}` },
-      });
+      const res = await fetch(`/api/sync?board=${boardId}`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Помилка");
       setMessage(`Синхронізовано ${data.count} задач`);

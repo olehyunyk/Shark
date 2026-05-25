@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { assertCronSecret } from "@/lib/auth";
 import { runSchemaMigration, verifySchema } from "@/lib/migrate-schema";
 
 export const maxDuration = 30;
 
-export async function POST(request: Request) {
-  try {
-    assertCronSecret(request);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unauthorized";
-    return NextResponse.json({ error: msg }, { status: 401 });
-  }
-
+export async function POST() {
   try {
     const applied = await runSchemaMigration();
     const verification = await verifySchema();
@@ -23,17 +15,9 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET() {
   try {
-    assertCronSecret(request);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unauthorized";
-    return NextResponse.json({ error: msg }, { status: 401 });
-  }
-
-  try {
-    const verification = await verifySchema();
-    return NextResponse.json(verification);
+    return NextResponse.json(await verifySchema());
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Check failed";
     return NextResponse.json({ error: msg }, { status: 500 });

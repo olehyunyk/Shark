@@ -1,30 +1,35 @@
 import { NextResponse } from "next/server";
 
+import { getDefaultBoard } from "@/config/jira-boards";
 import { getDb, schema } from "@/db";
-import { DEFAULT_JQL, getJiraConfig, normalizeJiraBaseUrl } from "@/lib/jira";
+import { getJiraConfig } from "@/lib/jira";
 import { getLastSync } from "@/lib/sync";
 
 export async function GET() {
   try {
     const db = getDb();
-    const count = await db.select().from(schema.jiraIssues);
+    const rows = await db.select().from(schema.jiraIssues);
     const lastSync = await getLastSync();
+    const board = getDefaultBoard();
 
-    let jiraBaseUrl = "";
-    let activeJql = DEFAULT_JQL;
+    let activeJql = board.jql;
+    let hasJira = false;
     try {
       const cfg = getJiraConfig();
-      jiraBaseUrl = cfg.baseUrl;
       activeJql = cfg.jql;
+      hasJira = true;
     } catch {
-      jiraBaseUrl = normalizeJiraBaseUrl(
-        process.env.JIRA_BASE_URL?.trim() || ""
-      );
-      activeJql = process.env.JIRA_JQL?.trim() || DEFAULT_JQL;
+      /* credentials missing */
     }
 
     return NextResponse.json({
-      issuesInDb: count.length,
+      issuesInDb: rows.length,
+      board: {
+        id: board.id,
+        name: board.name,
+        boardUrl: board.boardUrl,
+        projectKey: board.projectKey,
+      },
       lastSync: lastSync
         ? {
             status: lastSync.status,
@@ -34,12 +39,7 @@ export async function GET() {
             errorMessage: lastSync.errorMessage,
           }
         : null,
-      config: {
-        jiraBaseUrl: jiraBaseUrl || null,
-        activeJql,
-        hasJiraEmail: Boolean(process.env.JIRA_EMAIL?.trim()),
-        hasJiraToken: Boolean(process.env.JIRA_API_TOKEN?.trim()),
-      },
+      config: { activeJql, hasJiraEmail: hasJira, hasJiraToken: hasJira },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Status failed";

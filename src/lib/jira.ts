@@ -1,6 +1,9 @@
-/** JQL для дошки MK (~230 відкритих задач). */
-export const DEFAULT_JQL =
-  "project = MK AND statusCategory != Done ORDER BY duedate ASC";
+import {
+  getBoard,
+  getDefaultBoard,
+  JIRA_SITE_URL,
+  type JiraBoardConfig,
+} from "@/config/jira-boards";
 
 const SEARCH_FIELDS = [
   "summary",
@@ -26,30 +29,14 @@ type JiraSearchResponse = {
   issues?: Array<{ id?: string; key?: string; fields?: Record<string, unknown> }>;
   isLast?: boolean;
   nextPageToken?: string;
-  total?: number;
 };
 
-/** Лише origin, якщо в env випадково вставили URL дошки /jira/software/... */
-export function normalizeJiraBaseUrl(url: string): string {
-  const trimmed = url.trim().replace(/\/$/, "");
-  try {
-    const parsed = new URL(trimmed);
-    if (parsed.hostname.endsWith(".atlassian.net")) {
-      return `${parsed.protocol}//${parsed.hostname}`;
-    }
-  } catch {
-    /* use trimmed */
-  }
-  return trimmed;
-}
-
-export function getJiraConfig() {
-  const baseUrl = process.env.JIRA_BASE_URL?.trim();
+export function getJiraConfig(boardId?: string) {
+  const board = getBoard(boardId);
   const email = process.env.JIRA_EMAIL?.trim();
   const apiToken = process.env.JIRA_API_TOKEN?.trim();
 
   const missing = [
-    !baseUrl && "JIRA_BASE_URL",
     !email && "JIRA_EMAIL",
     !apiToken && "JIRA_API_TOKEN",
   ].filter(Boolean) as string[];
@@ -58,11 +45,14 @@ export function getJiraConfig() {
     throw new Error(`Missing env: ${missing.join(", ")}`);
   }
 
+  const jqlOverride = process.env.JIRA_JQL?.trim();
+
   return {
-    baseUrl: normalizeJiraBaseUrl(baseUrl!),
+    baseUrl: JIRA_SITE_URL,
     email: email!,
     apiToken: apiToken!,
-    jql: process.env.JIRA_JQL?.trim() || DEFAULT_JQL,
+    board,
+    jql: jqlOverride || board.jql,
   };
 }
 
@@ -104,7 +94,6 @@ async function searchPage(
   return (await res.json()) as JiraSearchResponse;
 }
 
-/** GET fallback — інколи POST з fields повертає 0 при валідному JQL. */
 async function searchPageGet(
   baseUrl: string,
   auth: string,
@@ -169,9 +158,10 @@ async function fetchAllPages(
 
 export async function fetchJiraIssues(
   jql?: string,
-  maxResults = 500
+  maxResults = 500,
+  boardId?: string
 ): Promise<JiraIssueDto[]> {
-  const { baseUrl, email, apiToken, jql: defaultJql } = getJiraConfig();
+  const { baseUrl, email, apiToken, jql: defaultJql } = getJiraConfig(boardId);
   const query = jql?.trim() || defaultJql;
   const auth = authHeader(email, apiToken);
 
@@ -206,21 +196,19 @@ export async function fetchJiraIssues(
   return issues;
 }
 
-export async function probeJiraSearch(): Promise<{
-  baseUrl: string;
-  activeJql: string;
-  count: number;
-  sampleKeys: string[];
-}> {
-  const { baseUrl, jql: activeJql } = getJiraConfig();
-  const issues = await fetchJiraIssues(activeJql, 50);
+export async function probeJiraSearch(boardId?: string) {
+  const { baseUrl, jql: activeJql, board } = getJiraConfig(boardId);
+  const issues = await fetchJiraIssues(activeJql, 50, boardId);
   return {
     baseUrl,
+    board: board.id,
     activeJql,
     count: issues.length,
     sampleKeys: issues.slice(0, 10).map((i) => i.key),
   };
 }
+
+export { getDefaultBoard, type JiraBoardConfig };
 
 function parseIssue(
   raw: { id?: string; key?: string; fields?: Record<string, unknown> },

@@ -3,9 +3,9 @@ import { desc, eq, lt } from "drizzle-orm";
 import { getDb, schema } from "@/db";
 import { fetchJiraIssues, getJiraConfig } from "@/lib/jira";
 
-export async function runJiraSync(jql?: string) {
+export async function runJiraSync(jql?: string, boardId?: string) {
   const db = getDb();
-  const { jql: defaultJql } = getJiraConfig();
+  const { jql: defaultJql } = getJiraConfig(boardId);
   const query = jql?.trim() || defaultJql;
   const startedAt = new Date();
 
@@ -15,7 +15,7 @@ export async function runJiraSync(jql?: string) {
     .returning();
 
   try {
-    const issues = await fetchJiraIssues(query);
+    const issues = await fetchJiraIssues(query, 500, boardId);
     const syncStamp = new Date();
 
     for (const issue of issues) {

@@ -1,8 +1,11 @@
+import { getDefaultBoard } from "@/config/jira-boards";
 import { getDb, schema } from "@/db";
 import { IssueTable } from "@/components/IssueTable";
 import { SyncButton } from "@/components/SyncButton";
 import { buildReport, BUCKET_ORDER } from "@/lib/report";
 import { getLastSync } from "@/lib/sync";
+
+const board = getDefaultBoard();
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +32,15 @@ export default async function HomePage() {
             Звіт по дедлайнах
           </h1>
           <p className="mt-1 text-slate-400">
-            Jira → Neon → Vercel · всього задач: {report.total}
+            <a
+              href={board.boardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-indigo-400 hover:underline"
+            >
+              {board.name}
+            </a>
+            {" · "}всього задач: {report.total}
           </p>
           {lastSync && (
             <p className="mt-1 text-xs text-slate-500">
@@ -53,7 +64,7 @@ export default async function HomePage() {
             </p>
           )}
         </div>
-        <SyncButton />
+        <SyncButton boardId={board.id} />
       </header>
 
       {dbError && (
@@ -65,13 +76,10 @@ export default async function HomePage() {
 
       {report.total === 0 && !dbError && (
         <div className="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
-          Немає даних. Натисніть «Оновити з Jira» або дочекайтесь cron (щодня
-          о 06:00 UTC).
+          Немає даних. Натисніть «Оновити з Jira».
           <p className="mt-3 text-xs text-slate-500">
-            На Vercel: <code>JIRA_BASE_URL</code> лише{" "}
-            <code>https://sharkscode.atlassian.net</code> (без /jira/software/…).
-            Якщо 0 задач після sync — перевірте <code>JIRA_JQL</code> (не
-            використовуйте <code>currentUser()</code>).
+            Проєкт <strong>{board.projectKey}</strong> · JQL:{" "}
+            <code>{board.jql}</code>
           </p>
         </div>
       )}
