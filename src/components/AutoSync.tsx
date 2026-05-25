@@ -34,7 +34,7 @@ export function AutoSync({ boardId = "mk" }: { boardId?: string }) {
   }, [sync]);
 
   return (
-    <p className="text-xs text-slate-500">
+    <p className="text-xs text-[var(--text-muted)]">
       Авто-оновлення кожні 5 хв
       {syncing ? " · синхронізація…" : ""}
       {lastRun ? ` · ${lastRun.toLocaleTimeString("uk-UA")}` : ""}

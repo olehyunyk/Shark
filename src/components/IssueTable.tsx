@@ -88,7 +88,7 @@ export function IssueTable({
                     {issue.dueDate == null ? (
                       "—"
                     ) : isOverdue(issue.dueDate) ? (
-                      <span className="font-medium text-red-600">
+                      <span className="font-medium text-[var(--danger)]">
                         {overdue} дн.
                       </span>
                     ) : (

@@ -102,22 +102,24 @@ export function Dashboard({
     <>
       <header className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--text)]">
             Звіт по дедлайнах
           </h1>
-          <p className="mt-1 text-slate-400">
+          <p className="mt-1 text-[var(--text-secondary)]">
             <a
               href={boardUrl}
               target="_blank"
               rel="noreferrer"
-              className="text-indigo-400 hover:underline"
+              className="text-[var(--link)] hover:underline"
             >
               {boardName}
             </a>
             {" · "}показано {filtered.length} з {stats.total}
           </p>
           {lastSyncLabel && (
-            <p className="mt-1 text-xs text-slate-500">{lastSyncLabel}</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              {lastSyncLabel}
+            </p>
           )}
           <AutoSync boardId={boardId} />
         </div>
@@ -132,33 +134,35 @@ export function Dashboard({
         <StatCard label="Без дедлайну" value={stats.noDue} />
       </div>
 
-      <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/40 p-4">
-        <label className="mb-2 block text-sm font-medium text-slate-300">
+      <div className="mb-6 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
+        <label className="mb-2 block text-sm font-medium text-[var(--text)]">
           JQL (зберігається в БД, не в .env)
         </label>
         <textarea
           value={jql}
           onChange={(e) => setJql(e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 font-mono text-sm text-slate-200"
+          className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2 font-mono text-sm text-[var(--text)] focus:border-[var(--border-strong)] focus:outline-none"
         />
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={saveJql}
             disabled={jqlSaving}
-            className="rounded-lg bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-600 disabled:opacity-50"
+            className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-sm text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
           >
             {jqlSaving ? "Збереження…" : "Зберегти JQL"}
           </button>
           <button
             type="button"
             onClick={() => setJql(defaultJql)}
-            className="text-sm text-slate-400 hover:text-slate-200"
+            className="text-sm text-[var(--text-secondary)] hover:text-[var(--text)]"
           >
             Скинути до default
           </button>
-          {jqlMsg && <span className="text-sm text-slate-400">{jqlMsg}</span>}
+          {jqlMsg && (
+            <span className="text-sm text-[var(--text-secondary)]">{jqlMsg}</span>
+          )}
         </div>
       </div>
 
@@ -174,12 +178,12 @@ export function Dashboard({
       </div>
 
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <label className="flex items-center gap-2 text-sm text-slate-400">
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           Тип (команда)
           <select
             value={issueType}
             onChange={(e) => setIssueType(e.target.value)}
-            className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-200"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[var(--text)]"
           >
             {types.map((t) => (
               <option key={t} value={t}>
@@ -188,14 +192,14 @@ export function Dashboard({
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-400">
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
           Сортування
           <select
             value={sort}
             onChange={(e) =>
               handleSortDropdown(e.target.value as SortKey)
             }
-            className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-200"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[var(--text)]"
           >
             {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
               <option key={k} value={k}>
@@ -207,7 +211,7 @@ export function Dashboard({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
+        <div className="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-6 py-12 text-center text-[var(--text-secondary)]">
           Немає задач для обраних фільтрів.
         </div>
       ) : (
@@ -221,7 +225,7 @@ export function Dashboard({
 
       {stats.total > 0 && (
         <footer className="mt-8">
-          <h3 className="mb-3 text-sm font-semibold text-slate-400">
+          <h3 className="mb-3 text-sm font-semibold text-[var(--text-secondary)]">
             Задач по типу (команда)
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -232,7 +236,7 @@ export function Dashboard({
                   key={type}
                   type="button"
                   onClick={() => setIssueType(type)}
-                  className="rounded-full border border-slate-700 px-3 py-1 text-sm text-slate-300 hover:border-indigo-500"
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-sm text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
                 >
                   {type}: {count}
                 </button>
@@ -255,13 +259,13 @@ function StatCard({
 }) {
   const color =
     accent === "red"
-      ? "text-red-400"
+      ? "text-[var(--danger)]"
       : accent === "amber"
-        ? "text-amber-400"
-        : "text-slate-100";
+        ? "text-[var(--warning)]"
+        : "text-[var(--text)]";
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900/40 px-4 py-3">
-      <p className="text-xs text-slate-500">{label}</p>
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm">
+      <p className="text-xs text-[var(--text-muted)]">{label}</p>
       <p className={`text-2xl font-semibold ${color}`}>{value}</p>
     </div>
   );
@@ -282,8 +286,8 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full px-3 py-1.5 text-sm ${
         active
-          ? "bg-indigo-600 text-white"
-          : "border border-slate-700 text-slate-400 hover:border-slate-500"
+          ? "bg-[var(--chip-active)] text-white"
+          : "border border-[var(--border)] bg-[var(--surface)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
       }`}
     >
       {label}

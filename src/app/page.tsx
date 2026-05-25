@@ -42,7 +42,7 @@ export default async function HomePage() {
   if (dbError) {
     return (
       <main className="mx-auto max-w-6xl px-4 py-10">
-        <div className="rounded-lg border border-amber-800 bg-amber-950/50 px-4 py-3 text-amber-200">
+        <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-[var(--error-text)]">
           {dbError}
         </div>
       </main>
