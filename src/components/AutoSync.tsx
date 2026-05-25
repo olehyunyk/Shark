@@ -28,6 +28,7 @@ export function AutoSync({ boardId = "mk" }: { boardId?: string }) {
   }, [boardId, router]);
 
   useEffect(() => {
+    sync();
     const id = setInterval(sync, INTERVAL_MS);
     return () => clearInterval(id);
   }, [sync]);

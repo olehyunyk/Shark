@@ -19,23 +19,11 @@ export async function runJiraSync(jql?: string, boardId?: string) {
     const syncStamp = new Date();
 
     for (const issue of issues) {
-      await db
-        .insert(schema.jiraIssues)
-        .values({
-          key: issue.key,
-          summary: issue.summary,
-          status: issue.status,
-          issueType: issue.issueType,
-          assignee: issue.assignee,
-          priority: issue.priority,
-          dueDate: issue.dueDate,
-          jiraUpdated: issue.jiraUpdated ? new Date(issue.jiraUpdated) : null,
-          url: issue.url,
-          syncedAt: syncStamp,
-        })
-        .onConflictDoUpdate({
-          target: schema.jiraIssues.key,
-          set: {
+      try {
+        await db
+          .insert(schema.jiraIssues)
+          .values({
+            key: issue.key,
             summary: issue.summary,
             status: issue.status,
             issueType: issue.issueType,
@@ -45,8 +33,30 @@ export async function runJiraSync(jql?: string, boardId?: string) {
             jiraUpdated: issue.jiraUpdated ? new Date(issue.jiraUpdated) : null,
             url: issue.url,
             syncedAt: syncStamp,
-          },
-        });
+          })
+          .onConflictDoUpdate({
+            target: schema.jiraIssues.key,
+            set: {
+              summary: issue.summary,
+              status: issue.status,
+              issueType: issue.issueType,
+              assignee: issue.assignee,
+              priority: issue.priority,
+              dueDate: issue.dueDate,
+              jiraUpdated: issue.jiraUpdated ? new Date(issue.jiraUpdated) : null,
+              url: issue.url,
+              syncedAt: syncStamp,
+            },
+          });
+      } catch (rowErr) {
+        const msg = rowErr instanceof Error ? rowErr.message : String(rowErr);
+        if (msg.includes("issue_type") || msg.includes("column")) {
+          throw new Error(
+            "DB schema outdated (missing issue_type). Redeploy or run /api/migrate POST."
+          );
+        }
+        throw rowErr;
+      }
     }
 
     await db
