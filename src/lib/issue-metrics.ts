@@ -7,11 +7,16 @@ export type TimeFilter =
   | "due_in_7"
   | "no_due";
 
+export type SortDirection = "asc" | "desc";
+
 export type SortKey =
-  | "overdue_days"
-  | "due_date"
+  | "key"
   | "issue_type"
-  | "key";
+  | "summary"
+  | "status"
+  | "due_date"
+  | "overdue_days"
+  | "priority";
 
 export const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
   all: "Усі",
@@ -22,11 +27,18 @@ export const TIME_FILTER_LABELS: Record<TimeFilter, string> = {
 };
 
 export const SORT_LABELS: Record<SortKey, string> = {
-  overdue_days: "Днів прострочення",
-  due_date: "Дедлайн",
-  issue_type: "Тип (команда)",
   key: "Ключ",
+  issue_type: "Тип (команда)",
+  summary: "Назва",
+  status: "Статус",
+  due_date: "Дедлайн",
+  overdue_days: "Днів прострочення",
+  priority: "Пріоритет",
 };
+
+export function defaultSortDirection(sort: SortKey): SortDirection {
+  return sort === "overdue_days" ? "desc" : "asc";
+}
 
 function todayUtc(): Date {
   const d = new Date();
@@ -91,28 +103,71 @@ export function matchesTimeFilter(
   }
 }
 
+function cmpNullableNumber(
+  a: number | null,
+  b: number | null,
+  nullLast = true
+): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return nullLast ? 1 : -1;
+  if (b === null) return nullLast ? -1 : 1;
+  return a - b;
+}
+
+function cmpNullableString(a: string | null, b: string | null): number {
+  const sa = a ?? "";
+  const sb = b ?? "";
+  if (!sa && !sb) return 0;
+  if (!sa) return 1;
+  if (!sb) return -1;
+  return sa.localeCompare(sb, "uk");
+}
+
 export function compareIssues(a: JiraIssueRow, b: JiraIssueRow, sort: SortKey) {
   switch (sort) {
     case "overdue_days": {
-      const oa = daysOverdue(a.dueDate) ?? -1;
-      const ob = daysOverdue(b.dueDate) ?? -1;
-      if (ob !== oa) return ob - oa;
-      return (a.dueDate ?? "").localeCompare(b.dueDate ?? "");
+      const oa = daysOverdue(a.dueDate);
+      const ob = daysOverdue(b.dueDate);
+      const cmp = cmpNullableNumber(oa, ob);
+      if (cmp !== 0) return cmp;
+      return cmpNullableString(a.dueDate, b.dueDate);
     }
-    case "due_date": {
-      const da = a.dueDate ?? "9999-99-99";
-      const db = b.dueDate ?? "9999-99-99";
-      return da.localeCompare(db);
-    }
+    case "due_date":
+      return cmpNullableString(a.dueDate, b.dueDate);
     case "issue_type": {
-      const ta = a.issueType ?? "—";
-      const tb = b.issueType ?? "—";
-      return ta.localeCompare(tb) || a.key.localeCompare(b.key);
+      const cmp = cmpNullableString(a.issueType, b.issueType);
+      return cmp || a.key.localeCompare(b.key);
     }
+    case "summary":
+      return (
+        cmpNullableString(a.summary, b.summary) ||
+        a.key.localeCompare(b.key)
+      );
+    case "status":
+      return (
+        cmpNullableString(a.status, b.status) ||
+        a.key.localeCompare(b.key)
+      );
+    case "priority":
+      return (
+        cmpNullableString(a.priority, b.priority) ||
+        a.key.localeCompare(b.key)
+      );
     case "key":
     default:
       return a.key.localeCompare(b.key);
   }
+}
+
+export function sortIssues(
+  issues: JiraIssueRow[],
+  sort: SortKey,
+  direction: SortDirection
+): JiraIssueRow[] {
+  const factor = direction === "asc" ? 1 : -1;
+  return [...issues].sort(
+    (a, b) => factor * compareIssues(a, b, sort)
+  );
 }
 
 export function computeStats(issues: JiraIssueRow[]) {
@@ -146,11 +201,12 @@ export function filterAndSortIssues(
     timeFilter: TimeFilter;
     issueType: string;
     sort: SortKey;
+    direction: SortDirection;
   }
 ): JiraIssueRow[] {
   let list = issues.filter((i) => matchesTimeFilter(i, opts.timeFilter));
   if (opts.issueType !== "all") {
     list = list.filter((i) => (i.issueType ?? "—") === opts.issueType);
   }
-  return [...list].sort((a, b) => compareIssues(a, b, opts.sort));
+  return sortIssues(list, opts.sort, opts.direction);
 }

@@ -8,9 +8,11 @@ import { AutoSync } from "@/components/AutoSync";
 import { SyncButton } from "@/components/SyncButton";
 import {
   computeStats,
+  defaultSortDirection,
   filterAndSortIssues,
   SORT_LABELS,
   TIME_FILTER_LABELS,
+  type SortDirection,
   type SortKey,
   type TimeFilter,
 } from "@/lib/issue-metrics";
@@ -37,6 +39,22 @@ export function Dashboard({
   const [timeFilter, setTimeFilter] = useState<TimeFilter>("all");
   const [issueType, setIssueType] = useState("all");
   const [sort, setSort] = useState<SortKey>("overdue_days");
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>("desc");
+
+  function handleSort(key: SortKey) {
+    if (key === sort) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSort(key);
+      setSortDirection(defaultSortDirection(key));
+    }
+  }
+
+  function handleSortDropdown(key: SortKey) {
+    setSort(key);
+    setSortDirection(defaultSortDirection(key));
+  }
   const [jql, setJql] = useState(activeJql);
   const [jqlSaving, setJqlSaving] = useState(false);
   const [jqlMsg, setJqlMsg] = useState<string | null>(null);
@@ -50,8 +68,14 @@ export function Dashboard({
   }, [issues]);
 
   const filtered = useMemo(
-    () => filterAndSortIssues(issues, { timeFilter, issueType, sort }),
-    [issues, timeFilter, issueType, sort]
+    () =>
+      filterAndSortIssues(issues, {
+        timeFilter,
+        issueType,
+        sort,
+        direction: sortDirection,
+      }),
+    [issues, timeFilter, issueType, sort, sortDirection]
   );
 
   async function saveJql() {
@@ -168,7 +192,9 @@ export function Dashboard({
           Сортування
           <select
             value={sort}
-            onChange={(e) => setSort(e.target.value as SortKey)}
+            onChange={(e) =>
+              handleSortDropdown(e.target.value as SortKey)
+            }
             className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1.5 text-slate-200"
           >
             {(Object.keys(SORT_LABELS) as SortKey[]).map((k) => (
@@ -185,7 +211,12 @@ export function Dashboard({
           Немає задач для обраних фільтрів.
         </div>
       ) : (
-        <IssueTable issues={filtered} />
+        <IssueTable
+          issues={filtered}
+          sortKey={sort}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+        />
       )}
 
       {stats.total > 0 && (

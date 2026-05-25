@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+:root {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-muted: #f3f3f1;
+  --border: #e6e6e3;
+  --border-strong: #d8d8d4;
+  --text: #1b1b1b;
+  --text-secondary: #5f5f5c;
+  --text-muted: #8b8b87;
+  --accent: #262626;
+  --accent-hover: #404040;
+  --link: #2563eb;
+}
+
 body {
-  @apply bg-slate-950 text-slate-100 antialiased;
+  background-color: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }

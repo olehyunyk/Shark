@@ -28,11 +28,13 @@ export function SyncButton({ boardId = "mk" }: { boardId?: string }) {
         type="button"
         onClick={handleSync}
         disabled={loading}
-        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+        className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
       >
         {loading ? "Синхронізація…" : "Оновити з Jira"}
       </button>
-      {message && <span className="text-sm text-slate-400">{message}</span>}
+      {message && (
+        <span className="text-sm text-[var(--text-secondary)]">{message}</span>
+      )}
     </div>
   );
 }
