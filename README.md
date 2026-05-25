@@ -24,12 +24,13 @@ npm run dev
 ## Деплой на Vercel
 
 1. Створіть проєкт на [vercel.com](https://vercel.com) з цього репозиторію.
-2. У **Storage** підключіть **Neon** — Vercel додасть `DATABASE_URL`.
+2. У **Storage** підключіть **Neon** — з’являться змінні з префіксом **`Shark_`** (назва інтеграції). Код підхоплює їх автоматично.
 3. Додайте змінні середовища:
 
 | Змінна | Опис |
 |--------|------|
-| `DATABASE_URL` | з Neon (авто при інтеграції) |
+| `Shark_POSTGRES_URL` або `Shark_*` | з Neon (авто; достатньо host/user/password/database) |
+| `DATABASE_URL` | альтернатива локально або вручну на Vercel |
 | `JIRA_BASE_URL` | `https://ваша-компанія.atlassian.net` |
 | `JIRA_EMAIL` | email Atlassian |
 | `JIRA_API_TOKEN` | [API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
