@@ -1,5 +1,6 @@
+/** Усі відкриті задачі проєкту MK (без assignee = currentUser — на сервері це не працює). */
 export const DEFAULT_JQL =
-  "project = MK AND resolution = Unresolved ORDER BY duedate ASC";
+  "project = MK AND statusCategory != Done ORDER BY duedate ASC, updated DESC";
 
 const SEARCH_FIELDS = [
   "summary",
@@ -21,6 +22,20 @@ export type JiraIssueDto = {
   url: string;
 };
 
+/** Лише origin, якщо в env випадково вставили URL дошки /jira/software/... */
+export function normalizeJiraBaseUrl(url: string): string {
+  const trimmed = url.trim().replace(/\/$/, "");
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.hostname.endsWith(".atlassian.net")) {
+      return `${parsed.protocol}//${parsed.hostname}`;
+    }
+  } catch {
+    /* use trimmed */
+  }
+  return trimmed;
+}
+
 export function getJiraConfig() {
   const baseUrl = process.env.JIRA_BASE_URL?.trim();
   const email = process.env.JIRA_EMAIL?.trim();
@@ -37,7 +52,7 @@ export function getJiraConfig() {
   }
 
   return {
-    baseUrl: baseUrl!.replace(/\/$/, ""),
+    baseUrl: normalizeJiraBaseUrl(baseUrl!),
     email: email!,
     apiToken: apiToken!,
     jql: process.env.JIRA_JQL?.trim() || DEFAULT_JQL,
@@ -88,12 +103,43 @@ export async function fetchJiraIssues(
       issues.push(parseIssue(raw, baseUrl));
     }
 
-    if (data.isLast !== false && (!data.issues?.length || data.isLast)) break;
+    const batch = data.issues ?? [];
+    if (data.isLast === true || batch.length === 0) break;
     nextPageToken = data.nextPageToken;
     if (!nextPageToken) break;
   }
 
   return issues;
+}
+
+/** Діагностика: скільки задач повертає Jira для різних JQL (без запису в БД). */
+export async function probeJiraSearch(): Promise<{
+  baseUrl: string;
+  activeJql: string;
+  count: number;
+  sampleKeys: string[];
+  probes: Array<{ jql: string; count: number }>;
+}> {
+  const { baseUrl, jql: activeJql } = getJiraConfig();
+  const issues = await fetchJiraIssues(activeJql, 50);
+  const probes: Array<{ jql: string; count: number }> = [];
+  for (const q of [
+    activeJql,
+    DEFAULT_JQL,
+    "project = MK ORDER BY updated DESC",
+    "project = MK AND resolution IS EMPTY ORDER BY updated DESC",
+  ]) {
+    if (probes.some((p) => p.jql === q)) continue;
+    const list = await fetchJiraIssues(q, 10);
+    probes.push({ jql: q, count: list.length });
+  }
+  return {
+    baseUrl,
+    activeJql,
+    count: issues.length,
+    sampleKeys: issues.slice(0, 5).map((i) => i.key),
+    probes,
+  };
 }
 
 function parseIssue(

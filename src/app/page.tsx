@@ -38,6 +38,18 @@ export default async function HomePage() {
               {lastSync.status === "success"
                 ? `${lastSync.issueCount} задач`
                 : lastSync.status}
+              {lastSync.jql && (
+                <>
+                  <br />
+                  JQL: <code className="text-slate-400">{lastSync.jql}</code>
+                </>
+              )}
+              {lastSync.errorMessage && (
+                <>
+                  <br />
+                  <span className="text-amber-400">{lastSync.errorMessage}</span>
+                </>
+              )}
             </p>
           )}
         </div>
@@ -55,6 +67,12 @@ export default async function HomePage() {
         <div className="rounded-xl border border-dashed border-slate-700 px-6 py-12 text-center text-slate-400">
           Немає даних. Натисніть «Оновити з Jira» або дочекайтесь cron (щодня
           о 06:00 UTC).
+          <p className="mt-3 text-xs text-slate-500">
+            На Vercel: <code>JIRA_BASE_URL</code> лише{" "}
+            <code>https://sharkscode.atlassian.net</code> (без /jira/software/…).
+            Якщо 0 задач після sync — перевірте <code>JIRA_JQL</code> (не
+            використовуйте <code>currentUser()</code>).
+          </p>
         </div>
       )}
 
