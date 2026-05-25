@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 
 import { getDefaultBoard } from "@/config/jira-boards";
 import { getDb, schema } from "@/db";
-import { getJiraConfig } from "@/lib/jira";
+import { getJqlSettings } from "@/lib/settings";
 import { getLastSync } from "@/lib/sync";
+import { computeStats } from "@/lib/issue-metrics";
 
 export async function GET() {
   try {
@@ -11,25 +12,18 @@ export async function GET() {
     const rows = await db.select().from(schema.jiraIssues);
     const lastSync = await getLastSync();
     const board = getDefaultBoard();
-
-    let activeJql = board.jql;
-    let hasJira = false;
-    try {
-      const cfg = getJiraConfig();
-      activeJql = cfg.jql;
-      hasJira = true;
-    } catch {
-      /* credentials missing */
-    }
+    const jql = await getJqlSettings();
+    const stats = computeStats(rows);
 
     return NextResponse.json({
       issuesInDb: rows.length,
+      stats,
       board: {
         id: board.id,
         name: board.name,
         boardUrl: board.boardUrl,
-        projectKey: board.projectKey,
       },
+      jql,
       lastSync: lastSync
         ? {
             status: lastSync.status,
@@ -39,7 +33,9 @@ export async function GET() {
             errorMessage: lastSync.errorMessage,
           }
         : null,
-      config: { activeJql, hasJiraEmail: hasJira, hasJiraToken: hasJira },
+      hasJira: Boolean(
+        process.env.JIRA_EMAIL?.trim() && process.env.JIRA_API_TOKEN?.trim()
+      ),
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Status failed";

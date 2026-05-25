@@ -8,6 +8,7 @@ import {
 const SEARCH_FIELDS = [
   "summary",
   "status",
+  "issuetype",
   "assignee",
   "priority",
   "duedate",
@@ -18,6 +19,7 @@ export type JiraIssueDto = {
   key: string;
   summary: string;
   status: string;
+  issueType: string | null;
   assignee: string | null;
   priority: string | null;
   dueDate: string | null;
@@ -45,14 +47,11 @@ export function getJiraConfig(boardId?: string) {
     throw new Error(`Missing env: ${missing.join(", ")}`);
   }
 
-  const jqlOverride = process.env.JIRA_JQL?.trim();
-
   return {
     baseUrl: JIRA_SITE_URL,
     email: email!,
     apiToken: apiToken!,
     board,
-    jql: jqlOverride || board.jql,
   };
 }
 
@@ -157,12 +156,12 @@ async function fetchAllPages(
 }
 
 export async function fetchJiraIssues(
-  jql?: string,
-  maxResults = 500,
+  jql: string,
+  maxResults = 1000,
   boardId?: string
 ): Promise<JiraIssueDto[]> {
-  const { baseUrl, email, apiToken, jql: defaultJql } = getJiraConfig(boardId);
-  const query = jql?.trim() || defaultJql;
+  const { baseUrl, email, apiToken } = getJiraConfig(boardId);
+  const query = jql.trim();
   const auth = authHeader(email, apiToken);
 
   let issues = await fetchAllPages(
@@ -196,13 +195,13 @@ export async function fetchJiraIssues(
   return issues;
 }
 
-export async function probeJiraSearch(boardId?: string) {
-  const { baseUrl, jql: activeJql, board } = getJiraConfig(boardId);
-  const issues = await fetchJiraIssues(activeJql, 50, boardId);
+export async function probeJiraSearch(jql: string, boardId?: string) {
+  const { baseUrl, board } = getJiraConfig(boardId);
+  const issues = await fetchJiraIssues(jql, 50, boardId);
   return {
     baseUrl,
     board: board.id,
-    activeJql,
+    activeJql: jql,
     count: issues.length,
     sampleKeys: issues.slice(0, 10).map((i) => i.key),
   };
@@ -216,6 +215,7 @@ function parseIssue(
 ): JiraIssueDto {
   const fields = raw.fields ?? {};
   const status = fields.status as { name?: string } | undefined;
+  const issuetype = fields.issuetype as { name?: string } | undefined;
   const assignee = fields.assignee as { displayName?: string } | undefined;
   const priority = fields.priority as { name?: string } | undefined;
   const dueRaw = fields.duedate as string | undefined;
@@ -230,6 +230,7 @@ function parseIssue(
     key,
     summary: (fields.summary as string) || "",
     status: status?.name || "—",
+    issueType: issuetype?.name ?? null,
     assignee: assignee?.displayName ?? null,
     priority: priority?.name ?? null,
     dueDate: dueRaw ?? null,

@@ -26,6 +26,14 @@ CREATE TABLE IF NOT EXISTS "sync_runs" (
   "error_message" text,
   "jql" text
 );
+
+ALTER TABLE "jira_issues" ADD COLUMN IF NOT EXISTS "issue_type" varchar(128);
+
+CREATE TABLE IF NOT EXISTS "app_settings" (
+  "key" varchar(64) PRIMARY KEY NOT NULL,
+  "value" text NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);
 `;
 
 export async function runSchemaMigration(): Promise<string[]> {
@@ -51,11 +59,14 @@ export async function verifySchema(): Promise<{
     SELECT table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name IN ('jira_issues', 'sync_runs')
+      AND table_name IN ('jira_issues', 'sync_runs', 'app_settings')
   `;
   const tables = (rows as { table_name: string }[]).map((r) => r.table_name);
   return {
-    ok: tables.includes("jira_issues") && tables.includes("sync_runs"),
+    ok:
+      tables.includes("jira_issues") &&
+      tables.includes("sync_runs") &&
+      tables.includes("app_settings"),
     tables,
   };
 }

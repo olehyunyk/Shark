@@ -13,6 +13,7 @@ export const jiraIssues = pgTable("jira_issues", {
   key: varchar("key", { length: 32 }).notNull().unique(),
   summary: text("summary").notNull(),
   status: varchar("status", { length: 128 }).notNull(),
+  issueType: varchar("issue_type", { length: 128 }),
   assignee: varchar("assignee", { length: 256 }),
   priority: varchar("priority", { length: 64 }),
   dueDate: date("due_date"),
@@ -29,6 +30,14 @@ export const syncRuns = pgTable("sync_runs", {
   status: varchar("status", { length: 32 }).notNull(),
   errorMessage: text("error_message"),
   jql: text("jql"),
+});
+
+export const appSettings = pgTable("app_settings", {
+  key: varchar("key", { length: 64 }).primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export type JiraIssueRow = typeof jiraIssues.$inferSelect;

@@ -43,7 +43,10 @@ function getDatabaseUrl() {
 }
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sqlFile = join(__dirname, "../drizzle/0000_init.sql");
+const sqlFiles = [
+  join(__dirname, "../drizzle/0000_init.sql"),
+  join(__dirname, "../drizzle/0001_issue_type_settings.sql"),
+];
 
 function shouldMigrate() {
   if (process.env.SKIP_DB_MIGRATE === "1") return false;
@@ -63,19 +66,20 @@ async function main() {
 
   const url = getDatabaseUrl();
   const sql = neon(url);
-  const migration = readFileSync(sqlFile, "utf8");
-
-  for (const statement of migration.split(";")) {
-    const trimmed = statement.trim();
-    if (!trimmed) continue;
-    await sql.query(trimmed);
+  for (const sqlFile of sqlFiles) {
+    const migration = readFileSync(sqlFile, "utf8");
+    for (const statement of migration.split(";")) {
+      const trimmed = statement.trim();
+      if (!trimmed) continue;
+      await sql.query(trimmed);
+    }
   }
 
   const check = await sql`
     SELECT table_name
     FROM information_schema.tables
     WHERE table_schema = 'public'
-      AND table_name IN ('jira_issues', 'sync_runs')
+      AND table_name IN ('jira_issues', 'sync_runs', 'app_settings')
   `;
   const tables = check.map((r) => r.table_name);
   console.log("Migration OK. Tables:", tables.join(", "));
