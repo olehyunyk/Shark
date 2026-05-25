@@ -9,13 +9,17 @@ function buildFromParts(): string | null {
   const user =
     prefixed("POSTGRES_USER") ?? prefixed("PGUSER") ?? process.env.POSTGRES_USER;
   const password =
-    prefixed("POSTGRES_PASSWORD") ?? process.env.POSTGRES_PASSWORD;
+    prefixed("POSTGRES_PASSWORD") ??
+    prefixed("PGPASSWORD") ??
+    process.env.POSTGRES_PASSWORD;
   const host =
     prefixed("POSTGRES_HOST") ??
     prefixed("PGHOST") ??
     process.env.POSTGRES_HOST;
   const database =
-    prefixed("POSTGRES_DATABASE") ?? process.env.POSTGRES_DATABASE;
+    prefixed("POSTGRES_DATABASE") ??
+    prefixed("PGDATABASE") ??
+    process.env.POSTGRES_DATABASE;
 
   if (!user || !password || !host || !database) return null;
 

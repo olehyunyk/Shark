@@ -31,20 +31,20 @@ npm run dev
 |--------|------|
 | `Shark_POSTGRES_URL` або `Shark_*` | з Neon (авто; достатньо host/user/password/database) |
 | `DATABASE_URL` | альтернатива локально або вручну на Vercel |
-| `JIRA_BASE_URL` | `https://ваша-компанія.atlassian.net` |
+| `JIRA_BASE_URL` | `https://sharkscode.atlassian.net` |
 | `JIRA_EMAIL` | email Atlassian |
 | `JIRA_API_TOKEN` | [API token](https://id.atlassian.com/manage-profile/security/api-tokens) |
 | `JIRA_JQL` | (опційно) JQL за замовчуванням |
 | `CRON_SECRET` | довгий випадковий рядок |
 
-4. Після деплою виконайте міграцію БД (один раз):
+4. **Міграція БД**: під час `npm run build` на Vercel автоматично виконується `drizzle-kit migrate` (таблиці `jira_issues`, `sync_runs`). Якщо build уже пройшов без міграції, один раз викличте:
 
 ```bash
-# локально з production DATABASE_URL або через Neon SQL Editor:
-npm run db:migrate
+curl -X POST https://<your-app>.vercel.app/api/migrate \
+  -H "Authorization: Bearer <CRON_SECRET>"
 ```
 
-Або вставте SQL з `drizzle/0000_init.sql` у Neon Console.
+Або локально з production `DATABASE_URL`: `npm run db:migrate`.
 
 5. **Cron**: у `vercel.json` налаштовано щоденну синхронізацію о **06:00 UTC**. Vercel надсилає `Authorization: Bearer <CRON_SECRET>` автоматично, якщо `CRON_SECRET` задано в env.
 
@@ -54,19 +54,18 @@ npm run db:migrate
 |----------|-------|------|
 | `/api/sync` | POST | Ручна синхронізація (`Authorization: Bearer CRON_SECRET`) |
 | `/api/cron/sync` | GET | Cron (те саме) |
+| `/api/migrate` | POST | Idempotent міграція таблиць (`Authorization: Bearer CRON_SECRET`) |
 | `/api/report` | GET | JSON-звіт з БД |
 
 ## JQL за замовчуванням
 
-```text
-assignee = currentUser() AND resolution = Unresolved ORDER BY duedate ASC
-```
-
-Приклад для команди:
+Проєкт **MK** на `sharkscode.atlassian.net`:
 
 ```text
-project = TEAM AND resolution = Unresolved ORDER BY duedate ASC
+project = MK AND resolution = Unresolved ORDER BY duedate ASC
 ```
+
+Перевизначіть через `JIRA_JQL` у Vercel, якщо потрібен інший фільтр.
 
 ## Категорії дедлайнів
 

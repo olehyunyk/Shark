@@ -1,5 +1,5 @@
 export const DEFAULT_JQL =
-  "assignee = currentUser() AND resolution = Unresolved ORDER BY duedate ASC";
+  "project = MK AND resolution = Unresolved ORDER BY duedate ASC";
 
 const SEARCH_FIELDS = [
   "summary",
