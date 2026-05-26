@@ -197,6 +197,37 @@ export async function fetchJiraIssues(
   return issues;
 }
 
+const JIRA_KEY_RE = /^[A-Z][A-Z0-9]+-\d+$/i;
+
+export function normalizeJiraKey(raw: string): string | null {
+  const key = raw.trim().toUpperCase();
+  return JIRA_KEY_RE.test(key) ? key : null;
+}
+
+export async function fetchJiraIssuesByKeys(
+  keys: string[],
+  boardId?: string
+): Promise<JiraIssueDto[]> {
+  const unique = [
+    ...new Set(
+      keys
+        .map((k) => normalizeJiraKey(k))
+        .filter((k): k is string => Boolean(k))
+    ),
+  ];
+  if (unique.length === 0) return [];
+
+  const all: JiraIssueDto[] = [];
+  const chunkSize = 50;
+  for (let i = 0; i < unique.length; i += chunkSize) {
+    const chunk = unique.slice(i, i + chunkSize);
+    const jql = `key in (${chunk.join(", ")}) ORDER BY updated DESC`;
+    const batch = await fetchJiraIssues(jql, chunk.length, boardId);
+    all.push(...batch);
+  }
+  return all;
+}
+
 export async function probeJiraSearch(jql: string, boardId?: string) {
   const { baseUrl, board } = getJiraConfig(boardId);
   const issues = await fetchJiraIssues(jql, 50, boardId);

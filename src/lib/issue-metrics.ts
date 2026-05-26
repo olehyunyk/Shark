@@ -126,6 +126,16 @@ export function formatIssueDate(value: Date | string | null): string {
   return `${y}-${m}-${d}`;
 }
 
+export function formatIssueDateTime(value: Date | string | null): string {
+  if (!value) return "—";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("uk-UA", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
 function cmpNullableNumber(
   a: number | null,
   b: number | null,

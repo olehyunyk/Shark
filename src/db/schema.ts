@@ -41,5 +41,33 @@ export const appSettings = pgTable("app_settings", {
     .defaultNow(),
 });
 
+export const trackedIssues = pgTable("tracked_issues", {
+  id: serial("id").primaryKey(),
+  key: varchar("key", { length: 32 }).notNull().unique(),
+  category: varchar("category", { length: 32 }).notNull(),
+  summary: text("summary").notNull().default(""),
+  status: varchar("status", { length: 128 }).notNull().default("—"),
+  issueType: varchar("issue_type", { length: 128 }),
+  assignee: varchar("assignee", { length: 256 }),
+  priority: varchar("priority", { length: 64 }),
+  dueDate: date("due_date"),
+  jiraCreated: timestamp("jira_created", { withTimezone: true }),
+  jiraUpdated: timestamp("jira_updated", { withTimezone: true }),
+  url: text("url").notNull(),
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
+  addedAt: timestamp("added_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const trackedSyncRuns = pgTable("tracked_sync_runs", {
+  id: serial("id").primaryKey(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  issueCount: integer("issue_count").notNull().default(0),
+  status: varchar("status", { length: 32 }).notNull(),
+  errorMessage: text("error_message"),
+});
+
 export type JiraIssueRow = typeof jiraIssues.$inferSelect;
 export type SyncRunRow = typeof syncRuns.$inferSelect;
+export type TrackedIssueRow = typeof trackedIssues.$inferSelect;
+export type TrackedSyncRunRow = typeof trackedSyncRuns.$inferSelect;
