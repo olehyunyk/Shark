@@ -46,6 +46,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const sqlFiles = [
   join(__dirname, "../drizzle/0000_init.sql"),
   join(__dirname, "../drizzle/0001_issue_type_settings.sql"),
+  join(__dirname, "../drizzle/0002_jira_created.sql"),
 ];
 
 function shouldMigrate() {

@@ -12,6 +12,7 @@ const SEARCH_FIELDS = [
   "assignee",
   "priority",
   "duedate",
+  "created",
   "updated",
 ];
 
@@ -23,6 +24,7 @@ export type JiraIssueDto = {
   assignee: string | null;
   priority: string | null;
   dueDate: string | null;
+  jiraCreated: string | null;
   jiraUpdated: string | null;
   url: string;
 };
@@ -234,6 +236,7 @@ function parseIssue(
     assignee: assignee?.displayName ?? null,
     priority: priority?.name ?? null,
     dueDate: dueRaw ?? null,
+    jiraCreated: (fields.created as string) ?? null,
     jiraUpdated: (fields.updated as string) ?? null,
     url: key ? `${baseUrl}/browse/${key}` : baseUrl,
   };

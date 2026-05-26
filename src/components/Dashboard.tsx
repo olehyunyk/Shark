@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { JiraIssueRow } from "@/db/schema";
 import { IssueTable } from "@/components/IssueTable";
@@ -58,6 +58,12 @@ export function Dashboard({
   const [jql, setJql] = useState(activeJql);
   const [jqlSaving, setJqlSaving] = useState(false);
   const [jqlMsg, setJqlMsg] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState<10 | 20>(20);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [timeFilter, issueType, sort, sortDirection]);
 
   const stats = useMemo(() => computeStats(issues), [issues]);
 
@@ -77,6 +83,21 @@ export function Dashboard({
       }),
     [issues, timeFilter, issueType, sort, sortDirection]
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const pageIssues = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const rangeStart = filtered.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const rangeEnd = Math.min(currentPage * pageSize, filtered.length);
 
   async function saveJql() {
     setJqlSaving(true);
@@ -114,7 +135,10 @@ export function Dashboard({
             >
               {boardName}
             </a>
-            {" · "}показано {filtered.length} з {stats.total}
+            {" · "}
+            {filtered.length === 0
+              ? `0 з ${stats.total}`
+              : `${rangeStart}–${rangeEnd} з ${filtered.length} (усього ${stats.total})`}
           </p>
           {lastSyncLabel && (
             <p className="mt-1 text-xs text-[var(--text-muted)]">
@@ -208,6 +232,20 @@ export function Dashboard({
             ))}
           </select>
         </label>
+        <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          На сторінці
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value) as 10 | 20);
+              setPage(1);
+            }}
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[var(--text)]"
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+          </select>
+        </label>
       </div>
 
       {filtered.length === 0 ? (
@@ -215,12 +253,21 @@ export function Dashboard({
           Немає задач для обраних фільтрів.
         </div>
       ) : (
-        <IssueTable
-          issues={filtered}
-          sortKey={sort}
-          sortDirection={sortDirection}
-          onSort={handleSort}
-        />
+        <>
+          <IssueTable
+            issues={pageIssues}
+            sortKey={sort}
+            sortDirection={sortDirection}
+            onSort={handleSort}
+          />
+          {totalPages > 1 && (
+            <TablePagination
+              page={currentPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+          )}
+        </>
       )}
 
       {stats.total > 0 && (
@@ -267,6 +314,42 @@ function StatCard({
     <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3 shadow-sm">
       <p className="text-xs text-[var(--text-muted)]">{label}</p>
       <p className={`text-2xl font-semibold ${color}`}>{value}</p>
+    </div>
+  );
+}
+
+function TablePagination({
+  page,
+  totalPages,
+  onPageChange,
+}: {
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-sm text-[var(--text-muted)]">
+        Сторінка {page} з {totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Попередня
+        </button>
+        <button
+          type="button"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Наступна →
+        </button>
+      </div>
     </div>
   );
 }

@@ -17,6 +17,7 @@ export const jiraIssues = pgTable("jira_issues", {
   assignee: varchar("assignee", { length: 256 }),
   priority: varchar("priority", { length: 64 }),
   dueDate: date("due_date"),
+  jiraCreated: timestamp("jira_created", { withTimezone: true }),
   jiraUpdated: timestamp("jira_updated", { withTimezone: true }),
   url: text("url").notNull(),
   syncedAt: timestamp("synced_at", { withTimezone: true }).notNull().defaultNow(),

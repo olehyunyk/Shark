@@ -2,6 +2,7 @@ import type { JiraIssueRow } from "@/db/schema";
 import {
   daysOverdue,
   daysUntilDue,
+  formatIssueDate,
   isOverdue,
   type SortDirection,
   type SortKey,
@@ -12,6 +13,7 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "issue_type", label: "Тип" },
   { key: "summary", label: "Назва" },
   { key: "status", label: "Статус" },
+  { key: "jira_created", label: "Створено" },
   { key: "due_date", label: "Дедлайн" },
   { key: "overdue_days", label: "Прострочення" },
   { key: "priority", label: "Пріоритет" },
@@ -82,6 +84,9 @@ export function IssueTable({
                   </td>
                   <td className="px-4 py-3 text-[var(--text-secondary)]">
                     {issue.status}
+                  </td>
+                  <td className="px-4 py-3">
+                    {formatIssueDate(issue.jiraCreated)}
                   </td>
                   <td className="px-4 py-3">{issue.dueDate ?? "—"}</td>
                   <td className="px-4 py-3">

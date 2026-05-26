@@ -30,6 +30,9 @@ export async function runJiraSync(jql?: string, boardId?: string) {
             assignee: issue.assignee,
             priority: issue.priority,
             dueDate: issue.dueDate,
+            jiraCreated: issue.jiraCreated
+              ? new Date(issue.jiraCreated)
+              : null,
             jiraUpdated: issue.jiraUpdated ? new Date(issue.jiraUpdated) : null,
             url: issue.url,
             syncedAt: syncStamp,
@@ -43,6 +46,9 @@ export async function runJiraSync(jql?: string, boardId?: string) {
               assignee: issue.assignee,
               priority: issue.priority,
               dueDate: issue.dueDate,
+              jiraCreated: issue.jiraCreated
+                ? new Date(issue.jiraCreated)
+                : null,
               jiraUpdated: issue.jiraUpdated ? new Date(issue.jiraUpdated) : null,
               url: issue.url,
               syncedAt: syncStamp,
